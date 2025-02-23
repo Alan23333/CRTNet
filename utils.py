@@ -378,38 +378,6 @@ def ERGAS(img_fus, img_tgt, scale):
     return ergas
 
 
-def reconstruction(opt, net2, LRHS, HRMS, training_size=64, stride=32):
-    training_size_LRHS = training_size // opt.sf
-
-    index_matrix = torch.zeros((opt.hschannel, HRMS.shape[2], HRMS.shape[3])).cuda()  # (31,512,512)
-    abundance_t = torch.zeros((opt.hschannel, HRMS.shape[2], HRMS.shape[3])).cuda()  # (31,512,512)
-    a = []
-    for j in range(0, HRMS.shape[2] - training_size + 1, stride):
-        a.append(j)
-    a.append(HRMS.shape[2] - training_size)
-    b = []
-    for j in range(0, HRMS.shape[3] - training_size + 1, stride):
-        b.append(j)
-    b.append(HRMS.shape[3] - training_size)
-    for j in a:
-        for k in b:
-            temp_hrms = HRMS[:, :, j:j + training_size, k:k + training_size]
-            temp_lrhs = LRHS[:, :, j//opt.sf:j//opt.sf + training_size_LRHS, k//opt.sf:k//opt.sf + training_size_LRHS]
-            with torch.no_grad():
-                HSI = net2(temp_lrhs, temp_hrms)
-                HSI = HSI.squeeze()
-                HSI = torch.clamp(HSI, 0, 1)
-                abundance_t[:, j:j + training_size, k:k + training_size] = abundance_t[:, j:j + training_size,
-                                                                           k:k + training_size] + HSI
-                index_matrix[:, j:j + training_size, k:k + training_size] = 1 + index_matrix[:, j:j + training_size,
-                                                                                k:k + training_size]
-
-    HSI_recon = abundance_t / index_matrix
-    return HSI_recon.unsqueeze(0)
-
-
-
-
 def compute_ssim(im1, im2):
     n = im1.shape[2]
     ms_ssim = 0.0
